@@ -1,20 +1,31 @@
-import express from 'express';
 import OpenAI from 'openai';
-import cors from 'cors';
-const app = express();
-app.use(cors()); 
-app.use(express.json());
 
-const openai = new OpenAI({apiKey: process.env.OPENAI_API_KEY});
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-app.post('/api/solveGraph', async (req,res) => {
-    const {graph, question} = req.body;
+export default async function handler(req, res) {
+    // Handle CORS
+    res.setHeader('Access-Control-Allow-Origin', '*'); // allow all origins
+    res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+        // Handle preflight request
+        res.status(200).end();
+        return;
+    }
+
+    if (req.method !== 'POST') {
+        res.status(405).json({ error: 'Method not allowed' });
+        return;
+    }
+
+    const { graph, task } = req.body;
 
     const prompt = `
 I have this graph:
 ${JSON.stringify(graph)}
 
-Please solve this task: ${question}
+Please solve this task: ${task}
 
 Return only JSON like this:
 {
@@ -23,16 +34,20 @@ Return only JSON like this:
 }
 `;
 
-    const gptResp = await openai.chat.completions.create({
-        model: "gpt-4.1-mini",
-        messages: [{role:"user", content: prompt}],
-        temperature: 0
-    });
+    try {
+        const gptResp = await openai.chat.completions.create({
+            model: "gpt-4.1-mini",
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0
+        });
 
-    const text = gptResp.choices[0].message.content;
-    let json;
-    try{ json = JSON.parse(text); } catch(e){ json = {}; }
-    res.json(json);
-});
+        const text = gptResp.choices[0].message.content;
+        let json;
+        try { json = JSON.parse(text); } catch (e) { json = {}; }
 
-app.listen(3000,()=>console.log("Server running on port 3000"));
+        res.status(200).json(json);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Something went wrong' });
+    }
+}
