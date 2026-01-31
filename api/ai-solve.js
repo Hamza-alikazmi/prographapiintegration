@@ -1,5 +1,6 @@
 import express from 'express';
 import OpenAI from 'openai';
+import cors from 'cors';
 const app = express();
 app.use(cors()); 
 app.use(express.json());
