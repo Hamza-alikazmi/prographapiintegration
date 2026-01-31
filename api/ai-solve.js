@@ -3,24 +3,27 @@ import OpenAI from "openai";
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export default async function handler(req, res) {
-  // 1️⃣ CORS headers
-  res.setHeader("Access-Control-Allow-Origin", "*"); // allow all origins
+  res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  // 2️⃣ Handle preflight request
   if (req.method === "OPTIONS") {
     res.status(200).end();
     return;
   }
 
-  // 3️⃣ Only allow POST
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
     return;
   }
 
   const { graph, task } = req.body;
+  console.log("Received graph:", graph);
+  console.log("Received task:", task);
+
+  if (!graph || !task) {
+    return res.status(400).json({ error: "Missing graph or task in request body" });
+  }
 
   const prompt = `
 I have this graph:
@@ -43,16 +46,19 @@ Return only JSON like this:
     });
 
     const text = gptResp.choices[0].message.content;
+    console.log("GPT returned:", text);
+
     let json;
     try {
       json = JSON.parse(text);
     } catch (e) {
-      json = {};
+      console.error("JSON parse error:", e);
+      json = { error: "GPT output not valid JSON" };
     }
 
     res.status(200).json(json);
   } catch (err) {
-    console.error(err);
+    console.error("OpenAI error:", err);
     res.status(500).json({ error: "Something went wrong" });
   }
 }
