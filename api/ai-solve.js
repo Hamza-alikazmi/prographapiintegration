@@ -3,15 +3,18 @@ import OpenAI from "openai";
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export default async function handler(req, res) {
+  // --- CORS headers ---
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
+  // --- Handle preflight request ---
   if (req.method === "OPTIONS") {
     res.status(200).end();
     return;
   }
 
+  // --- Only allow POST ---
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
     return;
@@ -48,15 +51,15 @@ Return only JSON like this:
     const text = gptResp.choices[0].message.content;
     console.log("GPT returned:", text);
 
-    let json;
+    let solution;
     try {
-      json = JSON.parse(text);
+      solution = JSON.parse(text);
     } catch (e) {
       console.error("JSON parse error:", e);
-      json = { error: "GPT output not valid JSON" };
+      solution = { error: "GPT output not valid JSON", raw: text };
     }
 
-    res.status(200).json(json);
+    res.status(200).json({ solution });
   } catch (err) {
     console.error("OpenAI error:", err);
     res.status(500).json({ error: "Something went wrong" });
